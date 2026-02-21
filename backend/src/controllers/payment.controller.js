@@ -1,3 +1,4 @@
+// backend\src\controllers\payment.controller.js
 import crypto from "crypto";
 import pool from "../db/pool.js";
 import { createRazorpayOrder } from "../services/razorpay.service.js";
@@ -21,7 +22,7 @@ export async function createOrder(req, res) {
     // 1️⃣ Fetch dataset price
     const datasetRes = await pool.query(
       `SELECT price_inr FROM datasets WHERE id = $1`,
-      [datasetId]
+      [datasetId],
     );
 
     if (datasetRes.rowCount === 0) {
@@ -38,13 +39,11 @@ export async function createOrder(req, res) {
     const existingAccess = await pool.query(
       `SELECT 1 FROM dataset_permissions
        WHERE dataset_id = $1 AND user_id = $2`,
-      [datasetId, userId]
+      [datasetId, userId],
     );
 
     if (existingAccess.rowCount > 0) {
-      return res
-        .status(409)
-        .json({ message: "Dataset already purchased" });
+      return res.status(409).json({ message: "Dataset already purchased" });
     }
 
     // 3️⃣ Create local order
@@ -52,7 +51,7 @@ export async function createOrder(req, res) {
       `INSERT INTO orders (user_id, dataset_id, amount, status)
        VALUES ($1, $2, $3, 'created')
        RETURNING id`,
-      [userId, datasetId, amount]
+      [userId, datasetId, amount],
     );
 
     const orderId = orderRes.rows[0].id;
@@ -65,16 +64,24 @@ export async function createOrder(req, res) {
     });
 
     // 5️⃣ Store Razorpay order id
-    await pool.query(
-      `UPDATE orders SET razorpay_order_id = $1 WHERE id = $2`,
-      [razorpayOrder.id, orderId]
-    );
+    await pool.query(`UPDATE orders SET razorpay_order_id = $1 WHERE id = $2`, [
+      razorpayOrder.id,
+      orderId,
+    ]);
 
-    // 6️⃣ Respond to frontend
+    // // 6️⃣ Respond to frontend
+    // res.json({
+    //   orderId,
+    //   razorpayOrderId: razorpayOrder.id,
+    //   amount,
+    //   key: process.env.RAZORPAY_KEY_ID,
+    // });
+    // 6️⃣ Respond to frontend (amount in paise)
     res.json({
       orderId,
       razorpayOrderId: razorpayOrder.id,
-      amount,
+      amount: amount * 100, // ✅ INR → paise (ONLY here)
+      currency: "INR",
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
@@ -94,11 +101,8 @@ export async function createOrder(req, res) {
  */
 export async function verifyPayment(req, res) {
   const userId = req.user.id;
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-  } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    req.body;
 
   try {
     // 1️⃣ Verify Razorpay signature
@@ -114,7 +118,7 @@ export async function verifyPayment(req, res) {
     // 2️⃣ Fetch order
     const orderRes = await pool.query(
       `SELECT id, dataset_id FROM orders WHERE razorpay_order_id = $1`,
-      [razorpay_order_id]
+      [razorpay_order_id],
     );
 
     if (orderRes.rowCount === 0) {
@@ -128,14 +132,13 @@ export async function verifyPayment(req, res) {
       `INSERT INTO payments
         (order_id, razorpay_payment_id, razorpay_signature, status, paid_at)
        VALUES ($1, $2, $3, 'success', now())`,
-      [orderId, razorpay_payment_id, razorpay_signature]
+      [orderId, razorpay_payment_id, razorpay_signature],
     );
 
     // 4️⃣ Mark order paid
-    await pool.query(
-      `UPDATE orders SET status = 'paid' WHERE id = $1`,
-      [orderId]
-    );
+    await pool.query(`UPDATE orders SET status = 'paid' WHERE id = $1`, [
+      orderId,
+    ]);
 
     // 5️⃣ Grant dataset download access
     await pool.query(
@@ -143,7 +146,7 @@ export async function verifyPayment(req, res) {
         (dataset_id, user_id, permission, status)
        VALUES ($1, $2, 'download', 'approved')
        ON CONFLICT DO NOTHING`,
-      [dataset_id, userId]
+      [dataset_id, userId],
     );
 
     res.json({ message: "Payment verified & access granted" });

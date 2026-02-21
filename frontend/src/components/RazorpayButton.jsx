@@ -22,15 +22,35 @@ export default function RazorpayButton({ datasetId, onSuccess }) {
       // 1. Create order
       const { data } = await createOrder(datasetId);
 
+      // const options = {
+      //   key: data.key,
+      //   amount: data.amount * 100,
+      //   currency: "INR",
+      //   order_id: data.razorpayOrderId,
+      //   name: "Micrologic Data Marketplace",
+      //   description: "Dataset Purchase",
+      //   handler: async (response) => {
+      //     // 2. Verify payment
+      //     await verifyPayment({
+      //       razorpay_order_id: response.razorpay_order_id,
+      //       razorpay_payment_id: response.razorpay_payment_id,
+      //       razorpay_signature: response.razorpay_signature,
+      //     });
+
+      //     alert("Payment successful. Download unlocked.");
+      //     onSuccess?.();
+      //   },
+      //   theme: { color: "#2563eb" },
+      // };
+
       const options = {
         key: data.key,
-        amount: data.amount * 100,
-        currency: "INR",
+        amount: data.amount, // ✅ already in paise — DO NOT multiply
+        currency: data.currency,
         order_id: data.razorpayOrderId,
         name: "Micrologic Data Marketplace",
         description: "Dataset Purchase",
         handler: async (response) => {
-          // 2. Verify payment
           await verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -42,7 +62,6 @@ export default function RazorpayButton({ datasetId, onSuccess }) {
         },
         theme: { color: "#2563eb" },
       };
-
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (err) {

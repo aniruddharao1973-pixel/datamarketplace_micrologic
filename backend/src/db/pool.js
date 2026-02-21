@@ -1,3 +1,4 @@
+// backend\src\db\pool.js
 import dotenv from "dotenv";
 dotenv.config(); // 🔴 MUST be here (before Pool)
 
