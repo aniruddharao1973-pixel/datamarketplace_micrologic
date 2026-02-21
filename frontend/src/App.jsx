@@ -97,7 +97,21 @@ import Navbar from "./components/Navbar";
 import { useAuth } from "./auth/AuthContext";
 
 function AppLayout({ children }) {
-  const { user } = useAuth();
+  // const { user } = useAuth();
+
+  // if (!user) {
+  //   return <Navigate to="/login" />;
+  // }
+
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/login" />;
