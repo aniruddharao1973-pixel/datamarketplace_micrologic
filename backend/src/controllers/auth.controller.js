@@ -41,6 +41,7 @@
 //   });
 // };
 
+// src\controllers\auth.controller.js
 import pool from "../db/pool.js";
 import { comparePassword } from "../services/password.service.js";
 import { generateToken } from "../utils/token.js";
@@ -97,5 +98,68 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error("LOGIN ERROR:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+import { verifyGoogleToken } from "../services/google.service.js";
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: "Missing Google credential" });
+    }
+
+    // 1. Verify Google token
+    const payload = await verifyGoogleToken(credential);
+
+    const email = payload.email;
+    const googleId = payload.sub;
+
+    // 2. Check if user exists
+    let result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+
+    let user;
+
+    if (result.rows.length === 0) {
+      // 3. Create new Google user
+      const insert = await pool.query(
+        `
+        INSERT INTO users
+          (email, role, status, auth_provider, google_id, must_reset_password)
+        VALUES
+          ($1, 'consumer', 'active', 'google', $2, false)
+        RETURNING *
+        `,
+        [email, googleId],
+      );
+
+      user = insert.rows[0];
+    } else {
+      user = result.rows[0];
+
+      // Block disabled users
+      if (user.status !== "active") {
+        return res.status(403).json({ message: "Account disabled" });
+      }
+    }
+
+    // 4. Generate JWT
+    const token = generateToken(user);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("GOOGLE LOGIN ERROR:", err);
+    res.status(403).json({ message: "Google login failed" });
   }
 };

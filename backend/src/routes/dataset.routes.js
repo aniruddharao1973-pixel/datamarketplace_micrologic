@@ -6,6 +6,8 @@ import {
   listDatasets,
   getDatasetById,
   deleteDataset,
+  getMyPurchasedDatasets,
+  updateDatasetPrice, // 👈 ADD
 } from "../controllers/dataset.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorizeRoles } from "../middleware/role.middleware.js";
@@ -26,7 +28,16 @@ router.post(
   attachFileToDataset,
 );
 
-router.get("/", authenticate, listDatasets);
+router.get("/my/purchases", authenticate, getMyPurchasedDatasets);
+
+router.get("/", listDatasets);
 router.get("/:id", authenticate, getDatasetById);
+
+router.patch(
+  "/:id/price",
+  authenticate,
+  authorizeRoles("admin", "producer"),
+  updateDatasetPrice,
+);
 
 export default router;

@@ -441,6 +441,26 @@ export default function Datasets() {
     },
   ];
 
+  const trustBadge = (score, level) => {
+    if (score === null || score === undefined) return null;
+
+    let color =
+      score >= 70
+        ? "bg-emerald-100 text-emerald-700"
+        : score >= 40
+          ? "bg-blue-100 text-blue-700"
+          : "bg-amber-100 text-amber-700";
+
+    return (
+      <span
+        className={`text-[0.65rem] font-bold uppercase tracking-wide px-2 py-1 rounded-full ${color}`}
+        title={`Trust level: ${level}`}
+      >
+        Trust {score}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
       {/* Decorative background blobs */}
@@ -642,13 +662,16 @@ export default function Datasets() {
 
                       {/* Title */}
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <h2 className="text-base font-bold text-gray-800 transition-colors duration-300 truncate group-hover:text-gray-900">
-                          {d.name}
-                        </h2>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-bold text-gray-800 truncate group-hover:text-gray-900">
+                            {d.name}
+                          </h2>
+                          {trustBadge(d.trust_score, d.trust_level)}
+                        </div>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[0.68rem] text-gray-400 font-mono">
+                          {/* <span className="text-[0.68rem] text-gray-400 font-mono">
                             ID: {d.id}
-                          </span>
+                          </span> */}
                         </div>
                       </div>
                     </div>
@@ -663,8 +686,16 @@ export default function Datasets() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50" />
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">
-                          Available
+                        <span
+                          className={`text-xs font-medium ${
+                            d.trust_level === "degraded"
+                              ? "text-red-500"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {d.trust_level === "degraded"
+                            ? "Degraded"
+                            : "Available"}
                         </span>
                       </div>
 

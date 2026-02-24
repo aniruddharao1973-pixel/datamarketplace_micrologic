@@ -1,5 +1,6 @@
 // backend/src/controllers/dataset.controller.js
 import pool from "../db/pool.js";
+import { recalculateTrustScore } from "../services/trustScore.service.js";
 
 /**
  * Create dataset
@@ -40,6 +41,14 @@ export const createDataset = async (req, res) => {
       ],
     );
 
+    await pool.query(
+      `
+  INSERT INTO dataset_updates (dataset_id, update_type, description)
+  VALUES ($1, 'METADATA_EDIT', 'Dataset created')
+  `,
+      [result.rows[0].id],
+    );
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error("❌ createDataset failed:", err);
@@ -67,6 +76,17 @@ export const attachFileToDataset = async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "File not found" });
     }
+
+    // Log dataset update
+    await pool.query(
+      `
+  INSERT INTO dataset_updates (dataset_id, update_type, description)
+  VALUES ($1, 'FILE_UPLOAD', 'File attached to dataset')
+  `,
+      [datasetId],
+    );
+
+    await recalculateTrustScore(datasetId);
 
     res.json({
       message: "File attached to dataset",
@@ -160,14 +180,15 @@ export const getDatasetById = async (req, res) => {
     if (userId) {
       const accessRes = await pool.query(
         `
-        SELECT 1
-        FROM dataset_permissions
-        WHERE dataset_id = $1
-          AND user_id = $2
-          AND status = 'approved'
-        `,
+  SELECT 1
+  FROM dataset_purchases
+  WHERE dataset_id = $1
+    AND user_id = $2
+  `,
         [datasetId, userId],
       );
+
+      hasAccess = accessRes.rowCount > 0;
 
       hasAccess = accessRes.rowCount > 0;
     }
@@ -216,5 +237,77 @@ export const deleteDataset = async (req, res) => {
   } catch (err) {
     console.error("❌ deleteDataset failed:", err);
     res.status(500).json({ message: "Failed to delete dataset" });
+  }
+};
+
+export const getMyPurchasedDatasets = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        d.id,
+        d.name,
+        d.description,
+        d.dataset_type,
+        d.access_type,
+        d.price_inr,
+        dp.created_at AS purchased_at
+      FROM dataset_purchases dp
+      JOIN datasets d ON d.id = dp.dataset_id
+      WHERE dp.user_id = $1
+        AND d.is_deleted = false
+      ORDER BY dp.created_at DESC
+      `,
+      [userId],
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ getMyPurchasedDatasets failed:", err);
+    res.status(500).json({ message: "Failed to load purchased datasets" });
+  }
+};
+
+/**
+ * Update dataset price (admin / producer only)
+ */
+export const updateDatasetPrice = async (req, res) => {
+  const { id: datasetId } = req.params;
+  const { priceInr } = req.body;
+  const userId = req.user.id;
+  const role = req.user.role;
+
+  if (priceInr === undefined || priceInr < 0) {
+    return res.status(400).json({ message: "Invalid price" });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE datasets
+      SET price_inr = $1
+      WHERE id = $2
+        AND (owner_id = $3 OR $4 = 'admin')
+        AND is_deleted = false
+      RETURNING id, price_inr
+      `,
+      [priceInr, datasetId, userId, role],
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized or dataset not found" });
+    }
+
+    res.json({
+      message: "Price updated",
+      dataset: result.rows[0],
+    });
+  } catch (err) {
+    console.error("❌ updateDatasetPrice failed:", err);
+    res.status(500).json({ message: "Failed to update price" });
   }
 };

@@ -101,13 +101,20 @@
 // }
 
 // frontend/src/pages/Dashboard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 import CreateUserModal from "../components/modal/CreateUserModal";
+import { getMyPurchasedDatasets } from "../api/datasets.api";
+
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const [openCreateUser, setOpenCreateUser] = useState(false);
+  const [purchased, setPurchased] = useState([]);
+
+  useEffect(() => {
+    getMyPurchasedDatasets().then((res) => setPurchased(res.data));
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40">
@@ -230,6 +237,41 @@ export default function Dashboard() {
             </p>
             <p className="text-xs text-gray-400 mt-1">Primary email</p>
           </div>
+        </div>
+
+        <div className="mt-10">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            Purchased Datasets
+          </h2>
+
+          {purchased.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              You haven’t purchased any datasets yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {purchased.map((ds) => (
+                <div
+                  key={ds.id}
+                  className="flex items-center justify-between bg-white/70 border rounded-xl p-4"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-800">{ds.name}</p>
+                    <p className="text-xs text-gray-400">
+                      Purchased on{" "}
+                      {new Date(ds.purchased_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <a
+                    href={`/datasets/${ds.id}`}
+                    className="text-sm font-semibold text-indigo-600"
+                  >
+                    Open →
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Main Content Area */}

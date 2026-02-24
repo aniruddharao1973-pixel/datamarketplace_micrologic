@@ -57,8 +57,7 @@ export default function RazorpayButton({ datasetId, onSuccess }) {
             razorpay_signature: response.razorpay_signature,
           });
 
-          alert("Payment successful. Download unlocked.");
-          onSuccess?.();
+          onSuccess?.(); // refresh dataset / preview
         },
         theme: { color: "#2563eb" },
       };

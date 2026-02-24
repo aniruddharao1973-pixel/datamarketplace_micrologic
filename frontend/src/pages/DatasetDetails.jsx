@@ -190,6 +190,8 @@ import { useAuth } from "../auth/AuthContext";
 import RazorpayButton from "../components/RazorpayButton";
 import PreviewModal from "../components/modal/PreviewModal";
 import { uploadFile, attachFileToDataset } from "../api/files.api";
+import CheckoutDrawer from "../components/CheckoutDrawer";
+import { updateDatasetPrice } from "../api/datasets.api";
 
 export default function DatasetDetails() {
   const { id: datasetId } = useParams();
@@ -200,6 +202,9 @@ export default function DatasetDetails() {
   const [previewData, setPreviewData] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [price, setPrice] = useState(0);
 
   const loadDataset = () => {
     getDataset(datasetId).then((res) => setDs(res.data));
@@ -235,6 +240,10 @@ export default function DatasetDetails() {
     loadDataset();
   }, [datasetId]);
 
+  useEffect(() => {
+    if (ds) setPrice(ds.price_inr);
+  }, [ds]);
+
   if (!ds)
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex items-center justify-center">
@@ -248,7 +257,9 @@ export default function DatasetDetails() {
   const isProducer = user?.role === "producer";
 
   // ✅ STRICT + CORRECT RULES
-  const canDownload = ds.isOwner || ds.access_type === "public" || ds.hasAccess;
+  const canDownload =
+    ds.trust_level !== "degraded" &&
+    (ds.isOwner || ds.access_type === "public" || ds.hasAccess);
 
   const fileIcons = {
     csv: (
@@ -485,6 +496,34 @@ export default function DatasetDetails() {
                     </p>
                   )}
 
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <span
+                      className={`text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-full ${
+                        ds.trust_score >= 70
+                          ? "bg-emerald-100 text-emerald-700"
+                          : ds.trust_score >= 40
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      Trust Score: {ds.trust_score ?? "N/A"}
+                    </span>
+
+                    <span className="text-xs font-semibold text-gray-500">
+                      Level:{" "}
+                      <span className="capitalize">
+                        {ds.trust_level || "new"}
+                      </span>
+                    </span>
+
+                    {ds.last_updated_at && (
+                      <span className="text-xs text-gray-400">
+                        Updated{" "}
+                        {new Date(ds.last_updated_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Stats row */}
                   <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-4">
                     <div className="flex items-center gap-2">
@@ -539,6 +578,13 @@ export default function DatasetDetails() {
             </div>
           </div>
         </div>
+
+        {ds.trust_level === "degraded" && (
+          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+            ⚠ This dataset is temporarily degraded due to reliability issues.
+            Downloads are disabled until resolved.
+          </div>
+        )}
 
         {/* Upload Section */}
         {ds.canUpload && (
@@ -708,19 +754,23 @@ export default function DatasetDetails() {
                             if (f.file_type === "pdf") {
                               setPreviewData({
                                 type: "pdf",
-                                url: `${import.meta.env.VITE_API_URL}/files/preview/${datasetId}/${f.id}`,
+                                url: `${import.meta.env.VITE_API_BASE_URL}/files/preview/${datasetId}/${f.id}`,
                               });
                               setPreviewOpen(true);
                               return;
                             }
+
                             const res = await previewFile(datasetId, f.id);
+
                             setPreviewData({
-                              type: f.file_type,
+                              fileType: f.file_type,
                               ...res.data,
+                              datasetId,
+                              fileId: f.id,
                             });
                             setPreviewOpen(true);
                           }}
-                          className="group/btn inline-flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl px-4 py-2.5 cursor-pointer transition-all duration-200 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 active:scale-[0.97]"
+                          className="group/btn inline-flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl px-4 py-2.5 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50"
                         >
                           <svg
                             className="w-4 h-4"
@@ -843,6 +893,50 @@ export default function DatasetDetails() {
           )}
         </div>
 
+        {(ds.isOwner || user?.role === "admin") && (
+          <div className="mt-4 flex items-center gap-3">
+            {editingPrice ? (
+              <>
+                <input
+                  type="number"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={async () => {
+                    await updateDatasetPrice(datasetId, price);
+                    setEditingPrice(false);
+                    loadDataset();
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingPrice(false)}
+                  className="px-4 py-2 text-sm border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-semibold text-gray-700">
+                  Price: ₹{ds.price_inr}
+                </span>
+                <button
+                  onClick={() => setEditingPrice(true)}
+                  className="text-sm text-indigo-600 hover:underline"
+                >
+                  Edit
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Buy Action */}
         {!canDownload && user && !isProducer && (
           <div className="relative bg-gradient-to-br from-indigo-500/[0.03] to-violet-500/[0.06] backdrop-blur-sm rounded-2xl border border-indigo-200/50 p-6 sm:p-8">
@@ -874,7 +968,14 @@ export default function DatasetDetails() {
                 </p>
               </div>
               <div className="flex-shrink-0">
-                <RazorpayButton datasetId={datasetId} onSuccess={loadDataset} />
+                <button
+                  onClick={() => setCheckoutOpen(true)}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-white
+  bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl
+  px-6 py-3 transition-all hover:shadow-lg"
+                >
+                  Buy Dataset
+                </button>
               </div>
             </div>
           </div>
@@ -915,6 +1016,12 @@ export default function DatasetDetails() {
           setPreviewOpen(false);
           setPreviewData(null);
         }}
+      />
+      <CheckoutDrawer
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        dataset={ds}
+        onSuccess={loadDataset}
       />
     </div>
   );

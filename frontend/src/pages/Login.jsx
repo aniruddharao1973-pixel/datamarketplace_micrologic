@@ -111,9 +111,10 @@
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -358,6 +359,30 @@ export default function Login() {
                 />
               </svg>
             </button>
+
+            {/* Divider */}
+            <div className="my-6 flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">OR</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* Google Login */}
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  try {
+                    await loginWithGoogle(credentialResponse.credential);
+                    nav("/");
+                  } catch (err) {
+                    alert("You are not invited to this platform");
+                  }
+                }}
+                onError={() => {
+                  alert("Google login failed");
+                }}
+              />
+            </div>
 
             {/* Secure indicator */}
             <div className="flex items-center justify-center gap-2 mt-5">

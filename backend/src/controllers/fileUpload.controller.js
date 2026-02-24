@@ -3,6 +3,7 @@ import pool from "../db/pool.js";
 import path from "path";
 import crypto from "crypto";
 import fs from "fs";
+import { recalculateTrustScore } from "../services/trustScore.service.js";
 
 const ALLOWED_TYPES = ["excel", "csv", "pdf", "ppt", "json", "sql", "zip"];
 
@@ -51,6 +52,7 @@ export const uploadFile = async (req, res) => {
     );
 
     // ✅ IMPORTANT: return file ID at top level
+    // Log dataset update if attached later
     res.status(201).json({
       id: result.rows[0].id,
     });
