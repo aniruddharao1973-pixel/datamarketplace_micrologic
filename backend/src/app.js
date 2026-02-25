@@ -5,7 +5,9 @@ import express from "express";
 import cors from "cors";
 import cron from "node-cron";
 
-// Routes
+// ============================
+// ROUTES
+// ============================
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import passwordResetRoutes from "./routes/passwordReset.routes.js";
@@ -23,7 +25,7 @@ import { runTrustScoreJob } from "./jobs/trustScore.job.js";
 const app = express();
 
 // =======================================================
-// MIDDLEWARE (ORDER MATTERS)
+// CORS — FIXED FOR VERCEL + LOCALHOST (NO ENV DEPENDENCY)
 // =======================================================
 
 app.use(
@@ -31,31 +33,43 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://datamarketplace-micrologic.vercel.app",
-      "https://bright-lokum-7db95a.netlify.app",
     ],
-    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// IMPORTANT: handle preflight
+app.options("*", cors());
+
+// =======================================================
+// BODY PARSER
+// =======================================================
 
 app.use(express.json());
 
 // =======================================================
-// HEALTH CHECK (FIRST — IMPORTANT)
+// HEALTH CHECK (MUST BE BEFORE ROUTES)
 // =======================================================
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "OK" });
+  res.status(200).json({ status: "OK" });
 });
 
 // =======================================================
-// ROUTES
+// AUTH ROUTES
 // =======================================================
 
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", passwordResetRoutes);
 app.use("/api/auth", googleAuthRoutes);
 
+// =======================================================
+// OTHER ROUTES
+// =======================================================
+
 app.use("/api/admin", adminRoutes);
+
 app.use("/api/files", fileUploadRoutes);
 app.use("/api/files", fileDownloadRoutes);
 app.use("/api/files", filePreviewRoutes);
