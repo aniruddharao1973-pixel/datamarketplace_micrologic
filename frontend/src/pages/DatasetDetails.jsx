@@ -393,7 +393,7 @@ export default function DatasetDetails() {
         {/* Header Section */}
         <div className="mb-8 sm:mb-12">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 mb-6">
+          {/* <div className="flex items-center gap-2 mb-6">
             <a
               href="/datasets"
               className="text-sm text-gray-400 hover:text-indigo-500 transition-colors duration-200 no-underline"
@@ -416,7 +416,7 @@ export default function DatasetDetails() {
             <span className="text-sm text-gray-600 font-medium truncate">
               {ds.name}
             </span>
-          </div>
+          </div> */}
 
           {/* Title card */}
           <div className="relative bg-white/70 backdrop-blur-sm rounded-2xl border border-gray-200/60 overflow-hidden">

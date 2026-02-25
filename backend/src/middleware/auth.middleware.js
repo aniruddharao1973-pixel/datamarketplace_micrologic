@@ -19,6 +19,8 @@
 //   }
 // };
 
+
+// backend\src\middleware\auth.middleware.js
 import jwt from "jsonwebtoken";
 import pool from "../db/pool.js";
 
