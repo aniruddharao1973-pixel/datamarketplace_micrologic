@@ -371,14 +371,26 @@ export default function Login() {
             <div className="flex justify-center">
               <GoogleLogin
                 onSuccess={async (credentialResponse) => {
+                  console.log(
+                    "[LOGIN] Google success response =",
+                    credentialResponse,
+                  );
+                  console.log(
+                    "[LOGIN] Credential =",
+                    credentialResponse?.credential,
+                  );
+
                   try {
                     await loginWithGoogle(credentialResponse.credential);
+                    console.log("[LOGIN] Google login success → navigating");
                     nav("/");
                   } catch (err) {
-                    alert("You are not invited to this platform");
+                    console.error("[LOGIN] Backend Google login failed", err);
+                    alert("Google login backend failed");
                   }
                 }}
                 onError={() => {
+                  console.error("[LOGIN] Google login popup failed");
                   alert("Google login failed");
                 }}
               />

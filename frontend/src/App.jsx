@@ -97,13 +97,12 @@ import Navbar from "./components/Navbar";
 import { useAuth } from "./auth/AuthContext";
 
 function AppLayout({ children }) {
-  // const { user } = useAuth();
-
-  // if (!user) {
-  //   return <Navigate to="/login" />;
-  // }
-
   const { user, loading } = useAuth();
+
+  // DEBUG LOGS
+  console.log("[APP] loading =", loading);
+  console.log("[APP] user =", user);
+  console.log("[APP] window.origin =", window.location.origin);
 
   if (loading) {
     return (
@@ -114,6 +113,7 @@ function AppLayout({ children }) {
   }
 
   if (!user) {
+    console.warn("[APP] No user → redirecting to /login");
     return <Navigate to="/login" />;
   }
 

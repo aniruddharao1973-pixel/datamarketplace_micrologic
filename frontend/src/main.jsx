@@ -8,10 +8,13 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-if (!clientId) {
-  console.error("Google Client ID is missing. Check your .env file.");
-}
+// DEBUG LOGS
+console.log("[MAIN] window.origin =", window.location.origin);
+console.log("[MAIN] VITE_GOOGLE_CLIENT_ID =", clientId);
 
+if (!clientId) {
+  console.error("[MAIN] ❌ Google Client ID is missing");
+}
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={clientId}>
